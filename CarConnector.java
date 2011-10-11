@@ -38,7 +38,8 @@ public class CarConnector {
 			return null;
 		}
 		
-		LCD.drawString("Waiting for connection...", 0, 0);
+		LCD.drawString("Waiting for", 0, 0);
+		LCD.drawString("connection...", 0, 1);
 		 
 		BTConnection connection = Bluetooth.waitForConnection();
 		
@@ -70,7 +71,8 @@ public class CarConnector {
 		String friendlyDeviceName = _remoteDevice.getFriendlyName(false);
 		
 		LCD.clear();
-		LCD.drawString("Connected to " + friendlyDeviceName, 0, 0);
+		LCD.drawString("Connected to", 0, 0);
+		LCD.drawString(friendlyDeviceName, 0, 1);
 		
 		return true;
 	}
