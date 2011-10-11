@@ -32,6 +32,10 @@ public class CarConnector {
 		return _connected;
 	}
 	
+	public RemoteDevice getRemoteDevice() {
+		return _remoteDevice;
+	}
+	
 	public BTConnection waitForConnection() {
 		if (this.isConnected()) {
 			System.out.println("We are already connected.");

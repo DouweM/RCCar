@@ -19,7 +19,7 @@ public class BTCar {
 			return;
 		}
 
-		String friendlyDeviceName = RemoteDevice.getRemoteDevice(connection).getFriendlyName(false);
+		String friendlyDeviceName = carConnector.getRemoteDevice().getFriendlyName(false);
 		
 		LCD.clear();
 		LCD.drawString("Connected to", 0, 0);
