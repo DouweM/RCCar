@@ -22,7 +22,7 @@ public class CarConnector {
 	private DataInputStream _dataInStream 	= null;
 	private DifferentialPilot _pilot 		= null;
 	
-	private static byte moving = MOVING_STOPPED;
+	private byte _moving = MOVING_STOPPED;
 	
 	public CarConnector(DifferentialPilot pilot) {
 		_pilot = pilot;
@@ -125,7 +125,7 @@ public class CarConnector {
 				_pilot.setTravelSpeed(speed);
 			}
 			
-			if (moving != command) {
+			if (_moving != command) {
 				if (command == COMMAND_FORWARD) {
 					_pilot.forward();
 				}
@@ -133,14 +133,14 @@ public class CarConnector {
 					_pilot.backward();
 				}
 			}
-			moving = command;
+			_moving = command;
 			
 			break;
 		}
 		
 		case COMMAND_STOP: {
 			_pilot.stop();
-			moving = command;
+			_moving = command;
 			
 			break;
 		}
@@ -172,6 +172,6 @@ public class CarConnector {
 		default: {
 			System.out.println("Command not recognized: " + command);
 		}
-	}
+		}
 	}
 }
