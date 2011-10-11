@@ -38,6 +38,7 @@ public class CarConnector {
 			return null;
 		}
 		
+		System.out.println("Waiting for connection...");
 		 
 		BTConnection connection = Bluetooth.waitForConnection();
 		
@@ -93,6 +94,8 @@ public class CarConnector {
 			return;
 		}
 		
+		System.out.println("Waiting for command...");
+		
 		byte command = 0;
 		try {
 			command = _dataInStream.readByte();
@@ -101,6 +104,7 @@ public class CarConnector {
 			return;
 		}
 		
+		System.out.println("Received command " + command);
 		handleCommand(command);
 	}
 	
