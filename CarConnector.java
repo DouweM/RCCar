@@ -112,66 +112,66 @@ public class CarConnector {
 	
 	public void handleCommand(byte command) {
 		switch (command) {
-		case COMMAND_FORWARD:
-		case COMMAND_BACKWARD: {
-			int speed = -1;
-			try {
-				speed = _dataInStream.readInt();
-			} catch (IOException e) {
-				System.out.println("Failed to read speed: " + e);
-				return;
-			}
-			if (speed > -1) {
-				_pilot.setTravelSpeed(speed);
-			}
-			
-			if (_moving != command) {
-				if (command == COMMAND_FORWARD) {
-					_pilot.forward();
+			case COMMAND_FORWARD:
+			case COMMAND_BACKWARD: {
+				int speed = -1;
+				try {
+					speed = _dataInStream.readInt();
+				} catch (IOException e) {
+					System.out.println("Failed to read speed: " + e);
+					return;
 				}
-				else {
-					_pilot.backward();
+				if (speed > -1) {
+					_pilot.setTravelSpeed(speed);
 				}
+				
+				if (_moving != command) {
+					if (command == COMMAND_FORWARD) {
+						_pilot.forward();
+					}
+					else {
+						_pilot.backward();
+					}
+				}
+				_moving = command;
+				
+				break;
 			}
-			_moving = command;
 			
-			break;
-		}
-		
-		case COMMAND_STOP: {
-			_pilot.stop();
-			_moving = command;
-			
-			break;
-		}
-		
-		case COMMAND_STEER: {
-			int angle = -1;
-			try {
-				angle = _dataInStream.readInt();
-			} catch (IOException e) {
-				System.out.println("Failed to read angle: " + e);
-				return;
+			case COMMAND_STOP: {
+				_pilot.stop();
+				_moving = command;
+				
+				break;
 			}
-			int turnRate = 50;
-			if (angle > 0) {
-				turnRate = -turnRate;
-			}
-			angle = Math.abs(angle);
-			// turnRate: ratio of inside to outside motor: ratio = 1 - turnRate / 100
-			// positive turnRate => left  motor drives the inside wheel => car turns left
-			// negative turnRate => right                                            right
-			// turnRate == 0   => ratio = 1 - 0/100   = 1.0  => car travels in straight line
-			// turnRate == 100 => ratio = 1 - 100/100 = 0.0  => inside motor stops
-			// turnRate == 200 => ratio = 1 - 200/100 = -1.0 => car turns in place
-			_pilot.steer(turnRate, angle, false);
 			
-			break;
-		}
-		
-		default: {
-			System.out.println("Command not recognized: " + command);
-		}
+			case COMMAND_STEER: {
+				int angle = -1;
+				try {
+					angle = _dataInStream.readInt();
+				} catch (IOException e) {
+					System.out.println("Failed to read angle: " + e);
+					return;
+				}
+				int turnRate = 50;
+				if (angle > 0) {
+					turnRate = -turnRate;
+				}
+				angle = Math.abs(angle);
+				// turnRate: ratio of inside to outside motor: ratio = 1 - turnRate / 100
+				// positive turnRate => left  motor drives the inside wheel => car turns left
+				// negative turnRate => right                                            right
+				// turnRate == 0   => ratio = 1 - 0/100   = 1.0  => car travels in straight line
+				// turnRate == 100 => ratio = 1 - 100/100 = 0.0  => inside motor stops
+				// turnRate == 200 => ratio = 1 - 200/100 = -1.0 => car turns in place
+				_pilot.steer(turnRate, angle, false);
+				
+				break;
+			}
+			
+			default: {
+				System.out.println("Command not recognized: " + command);
+			}
 		}
 	}
 }
