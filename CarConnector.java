@@ -59,13 +59,18 @@ public class CarConnector {
 			return false;
 		}
 		
+		_connection = connection;
+		
 		_remoteDevice = null;
 		_dataInStream = null;
 		try {
 			_remoteDevice = RemoteDevice.getRemoteDevice(connection);
 		    _dataInStream = connection.openDataInputStream();
+			_remoteDevice = RemoteDevice.getRemoteDevice(_connection);
+		    _dataInStream = _connection.openDataInputStream();
 		} catch (IOException e) {
 			System.out.println("Failed to get device: " + e);
+			_connection = null;
 			return false;
 		}
 		
