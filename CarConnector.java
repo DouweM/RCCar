@@ -1,6 +1,5 @@
 import java.io.*;
 
-import lejos.nxt.*;
 import lejos.robotics.navigation.*;
 import lejos.nxt.comm.*;
 
@@ -36,13 +35,17 @@ public class CarConnector {
 		return _remoteDevice;
 	}
 	
+	public void log(String message) {
+		System.out.println("CC: " + message);
+	}
+	
 	public BTConnection waitForConnection() {
 		if (this.isConnected()) {
-			System.out.println("We are already connected.");
+			this.log("We are already connected.");
 			return null;
 		}
 		
-		System.out.println("Waiting for connection...");
+		this.log("Waiting for connection...");
 		 
 		BTConnection connection = Bluetooth.waitForConnection();
 		
@@ -55,7 +58,7 @@ public class CarConnector {
 	
 	public Boolean useConnection(BTConnection connection) {
 		if (this.isConnected()) {
-			System.out.println("We are already connected.");
+			this.log("We are already connected.");
 			return false;
 		}
 		
@@ -64,12 +67,10 @@ public class CarConnector {
 		_remoteDevice = null;
 		_dataInStream = null;
 		try {
-			_remoteDevice = RemoteDevice.getRemoteDevice(connection);
-		    _dataInStream = connection.openDataInputStream();
 			_remoteDevice = RemoteDevice.getRemoteDevice(_connection);
 		    _dataInStream = _connection.openDataInputStream();
 		} catch (IOException e) {
-			System.out.println("Failed to get device: " + e);
+			this.log("Failed to get device, stream: " + e);
 			_connection = null;
 			return false;
 		}
@@ -81,7 +82,7 @@ public class CarConnector {
 	
 	public void closeConnection() {
 		if (!this.isConnected()) {
-			System.out.println("We are not actually connected.");
+			this.log("We are not actually connected.");
 			return;
 		}
 
@@ -89,44 +90,49 @@ public class CarConnector {
 			_dataInStream.close();
 			_remoteDevice = null;
 			_connection.close();
+			_connection = null;
 		} catch (IOException e) {
-			System.out.println("Failed to close connection: " + e);
+			this.log("Failed to close connection: " + e);
 			return;
 		}
 		
 		_connected = false;
 	}
 	
-	public void waitForAndHandleCommand() {
+	public boolean waitForAndHandleCommand() {
 		if (!this.isConnected()) {
-			System.out.println("We are not actually connected.");
-			return;
+			this.log("We are not actually connected.");
+			return false;
 		}
 		
-		System.out.println("Waiting for command...");
+		this.log("Waiting for command...");
 		
 		byte command = 0;
 		try {
 			command = _dataInStream.readByte();
+		} catch (EOFException e) {
+			this.log("EOF reached.");
+			return false;
 		} catch (IOException e) {
-			System.out.println("Failed to read command: " + e);
-			return;
+			this.log("Failed to read command: " + e);
+			return false;
 		}
 		
-		System.out.println("Received command " + command);
-		handleCommand(command);
+		this.log("Received command " + command);
+		return handleCommand(command);
 	}
 	
-	public void handleCommand(byte command) {
+	public boolean handleCommand(byte command) {
 		switch (command) {
 			case COMMAND_FORWARD:
 			case COMMAND_BACKWARD: {
 				int speed = -1;
+				this.log("Waiting for speed...");
 				try {
 					speed = _dataInStream.readInt();
 				} catch (IOException e) {
-					System.out.println("Failed to read speed: " + e);
-					return;
+					this.log("Failed to read speed: " + e);
+					return false;
 				}
 				if (speed > -1) {
 					_pilot.setTravelSpeed(speed);
@@ -154,11 +160,12 @@ public class CarConnector {
 			
 			case COMMAND_STEER: {
 				int angle = -1;
+				this.log("Waiting for angle...");
 				try {
 					angle = _dataInStream.readInt();
 				} catch (IOException e) {
-					System.out.println("Failed to read angle: " + e);
-					return;
+					this.log("Failed to read angle: " + e);
+					return false;
 				}
 				int turnRate = 50;
 				if (angle > 0) {
@@ -177,8 +184,12 @@ public class CarConnector {
 			}
 			
 			default: {
-				System.out.println("Command not recognized: " + command);
+				this.log("Command not recognized: " + command);
+				return false;
 			}
 		}
+		
+		this.log("Handled command " + command);
+		return true;
 	}
 }
