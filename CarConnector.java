@@ -15,7 +15,7 @@ public class CarConnector {
 	public static final byte MOVING_BACKWARD	= COMMAND_BACKWARD;
 	public static final byte MOVING_STOPPED		= COMMAND_STOP;
 	
-	private Boolean _connected 				= false;
+	private boolean _connected 				= false;
 	private BTConnection _connection 		= null;
 	private RemoteDevice _remoteDevice 		= null;
 	private DataInputStream _dataInStream 	= null;
@@ -56,7 +56,7 @@ public class CarConnector {
 		return connection;
 	}
 	
-	public Boolean useConnection(BTConnection connection) {
+	public boolean useConnection(BTConnection connection) {
 		if (this.isConnected()) {
 			this.log("We are already connected.");
 			return false;
@@ -119,6 +119,7 @@ public class CarConnector {
 		}
 		
 		this.log("Received command " + command);
+		
 		return handleCommand(command);
 	}
 	
