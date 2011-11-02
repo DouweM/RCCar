@@ -5,7 +5,7 @@ import lejos.nxt.comm.*;
 
 import javax.bluetooth.*;
 
-public class CarConnector {
+public class RCCarEngine {
 	public static final byte COMMAND_FORWARD	= 1 << 0;
 	public static final byte COMMAND_BACKWARD	= 1 << 1;
 	public static final byte COMMAND_STOP		= 1 << 2;
@@ -23,7 +23,7 @@ public class CarConnector {
 	
 	private byte _moving = MOVING_STOPPED;
 	
-	public CarConnector(DifferentialPilot pilot) {
+	public RCCarEngine(DifferentialPilot pilot) {
 		_pilot = pilot;
 	}
 	

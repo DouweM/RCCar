@@ -4,19 +4,19 @@ import lejos.nxt.*;
 import lejos.nxt.comm.*;
 import lejos.robotics.navigation.*;
 
-public class BTCar {
+public class RCCar {
 	private static DifferentialPilot pilot = new DifferentialPilot(2.1f, 4.4f, Motor.A, Motor.B, false);
-	private static CarConnector carConnector = new CarConnector(pilot);
+	private static RCCarEngine carEngine = new RCCarEngine(pilot);
 	  
 	public static void main(String[] args) throws IOException {
 		System.out.println("Waiting for connection...");
 		
-		BTConnection connection = carConnector.waitForConnection();
+		BTConnection connection = carEngine.waitForConnection();
 		if (connection == null) {
 			return;
 		}
 
-		String friendlyDeviceName = carConnector.getRemoteDevice().getFriendlyName(false);
+		String friendlyDeviceName = carEngine.getRemoteDevice().getFriendlyName(false);
 		
 		System.out.println("Connected to " + friendlyDeviceName);
 		System.out.println("Press any key to continue");
@@ -32,7 +32,7 @@ public class BTCar {
 				break;
 			}
 			
-			boolean success = carConnector.waitForAndHandleCommand();
+			boolean success = carEngine.waitForAndHandleCommand();
 			if (!success) {
 				break;
 			}
@@ -41,7 +41,7 @@ public class BTCar {
 		System.out.println("Finished reading commands. Shutting down.");
 		
 		pilot.stop();
-		carConnector.closeConnection();
+		carEngine.closeConnection();
 		
 		Button.waitForPress();
 	}
