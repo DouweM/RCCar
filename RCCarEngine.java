@@ -170,7 +170,7 @@ public class RCCarEngine {
 			case COMMAND_STEER: {
 				this.log("Waiting for angle...");
 				
-				int angle = -1;
+				int angle = 0;
 				try {
 					angle = _dataInStream.readInt();
 				} catch (IOException e) {
@@ -181,16 +181,25 @@ public class RCCarEngine {
 				this.log("Received angle " + angle);
 				
 				int turnRate = 50;
-				if (angle > 0) {
+				if (angle > 0) { // Positive angle: We want to go right!
+					// But NXJ doesn't agree, see below. 
 					turnRate = -turnRate;
+					angle = -angle;
 				}
-				angle = Math.abs(angle);
+				
 				// turnRate: ratio of inside to outside motor: ratio = 1 - turnRate / 100
-				// positive turnRate => left  motor drives the inside wheel => car turns left
-				// negative turnRate => right                                            right
+				// positive turnRate => left  motor drives the inside wheel => car turns left, forward  or right, backward
+				// negative turnRate => right                                            right, forward or left, backward
 				// turnRate == 0   => ratio = 1 - 0/100   = 1.0  => car travels in straight line
 				// turnRate == 100 => ratio = 1 - 100/100 = 0.0  => inside motor stops
 				// turnRate == 200 => ratio = 1 - 200/100 = -1.0 => car turns in place
+				
+				// positive angle => move in direction that increases heading => car turns left
+				// negative angle =>                        decreases         =>           right
+				
+				// === SO ===
+				// left: positive turnRate, positive angle
+				// right: negative turnRate, negative angle
 				_pilot.steer(turnRate, angle, false);
 				
 				break;
