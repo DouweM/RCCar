@@ -1,30 +1,27 @@
 import java.io.IOException;
 
+import javax.bluetooth.RemoteDevice;
+
 import lejos.nxt.*;
 import lejos.nxt.comm.*;
 import lejos.robotics.navigation.*;
 
 public class RCCar {
-	private static DifferentialPilot pilot = new DifferentialPilot(2.9, 13.7, Motor.A, Motor.B, false);
-	private static RCCarEngine carEngine = new RCCarEngine(pilot);
-	  
 	public static void main(String[] args) throws IOException {
 		System.out.println("Waiting for connection...");
 		
-		BTConnection connection = carEngine.waitForConnection();
+		BTConnection connection = Bluetooth.waitForConnection();
 		if (connection == null) {
 			System.out.println("Failed to get connection");
 			return;
 		}
 
-		String friendlyDeviceName = carEngine.getRemoteDevice().getFriendlyName(false);
+		String friendlyDeviceName = RemoteDevice.getRemoteDevice(connection).getFriendlyName(false);
 		
 		System.out.println("Connected to " + friendlyDeviceName);
-		System.out.println("Press any key to continue");
 		
-		if (Button.waitForPress() == Button.ID_ESCAPE) {
-			return;
-		}
+		DifferentialPilot pilot = new DifferentialPilot(2.9, 13.7, Motor.A, Motor.B, false);
+		RCCarEngine carEngine = new RCCarEngine(pilot, connection);
 		
 		System.out.println("Reading commands in loop");
 						
@@ -41,8 +38,7 @@ public class RCCar {
 		
 		System.out.println("Finished reading commands. Shutting down.");
 		
-		pilot.stop();
-		carEngine.closeConnection();
+		carEngine.close();
 		
 		Button.waitForPress();
 	}

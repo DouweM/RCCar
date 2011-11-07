@@ -3,8 +3,6 @@ import java.io.*;
 import lejos.robotics.navigation.*;
 import lejos.nxt.comm.*;
 
-import javax.bluetooth.*;
-
 public class RCCarEngine {
 	public static final byte COMMAND_SETSPEED	= 1 << 0; // Followed by speed: positive = forward, negative = backward
 	public static final byte COMMAND_TRAVEL		= 1 << 1;
@@ -14,112 +12,39 @@ public class RCCarEngine {
 	public static enum MoveType { TRAVEL, STEER, STOP };
 	public static enum TravelDirection { FORWARD, BACKWARD, NONE };
 	
-	private boolean _connected 					= false;
-	private BTConnection _connection 			= null;
-	private RemoteDevice _remoteDevice 			= null;
-	private DataInputStream _dataInStream 		= null;
-	private DifferentialPilot _pilot 			= null;
+	private final DifferentialPilot _pilot;
+	private final DataInputStream _dataInStream;
+
 	
 	private MoveType _moveType 					= MoveType.STOP;
 	private float _steerTurnRate 				= 0.0f;
 	private TravelDirection _travelDirection 	= TravelDirection.NONE;
 	
-	public RCCarEngine(DifferentialPilot pilot) {
+	public RCCarEngine(DifferentialPilot pilot, NXTConnection connection) {
 		_pilot = pilot;
-	}
-	
-	public Boolean isConnected() {
-		return _connected;
-	}
-	
-	public RemoteDevice getRemoteDevice() {
-		return _remoteDevice;
+		_dataInStream = connection.openDataInputStream();
 	}
 	
 	public void log(String message) {
-		System.out.println("CC: " + message);
+		System.out.println("E: " + message);
 	}
 	
-	public BTConnection waitForConnection() {
-		if (this.isConnected()) {
-			this.log("We are already connected.");
-			return null;
-		}
-		
-		this.log("Waiting for connection...");
-		 
-		BTConnection connection = Bluetooth.waitForConnection();
-		
-		if (connection == null) {
-			return null;
-		}
-		
-		if (!this.useConnection(connection)) {
-			return null;
-		}
-		
-		return connection;
-	}
-	
-	public boolean useConnection(BTConnection connection) {
-		if (this.isConnected()) {
-			this.log("We are already connected.");
-			return false;
-		}
-		
-		_connection = connection;
-		
-		_remoteDevice = null;
-		_dataInStream = null;
-		try {
-			_remoteDevice = RemoteDevice.getRemoteDevice(_connection);
-		    _dataInStream = _connection.openDataInputStream();
-		} catch (IOException e) {
-			this.log("Failed to get device, stream: " + e);
-			_connection = null;
-			return false;
-		}
-		
-		_connected = true;
-		
-		return true;
-	}
-	
-	public void closeConnection() {
-		if (!this.isConnected()) {
-			this.log("We are not actually connected.");
-			return;
-		}
-
+	public void close() {
 		try {
 			_dataInStream.close();
-			_connection.close();
 			
-			this.reset();
+			_pilot.stop();
+			
+			_moveType = MoveType.STOP;
+			_travelDirection = TravelDirection.NONE;
+			_steerTurnRate = 0.0f;
 		} catch (IOException e) {
-			this.log("Failed to close connection: " + e);
+			this.log("Failed to close: " + e);
 			return;
 		}
-		
-		_connected = false;
-	}
-	
-	private void reset() {
-		_dataInStream = null;
-		_connection = null;
-		_remoteDevice = null;
-		
-		_moveType = MoveType.STOP;
-		_travelDirection = TravelDirection.NONE;
-		_steerTurnRate = 0.0f;
 	}
 	
 	public boolean waitForAndHandleCommand() {
-		if (!this.isConnected()) {
-			this.log("We are not actually connected.");
-			return false;
-		}
-		
 		this.log("Waiting for command...");
 		
 		byte command = 0;
