@@ -6,22 +6,23 @@ import lejos.nxt.comm.*;
 import javax.bluetooth.*;
 
 public class RCCarEngine {
-	public static final byte COMMAND_FORWARD	= 1 << 0;
-	public static final byte COMMAND_BACKWARD	= 1 << 1;
-	public static final byte COMMAND_STOP		= 1 << 2;
-	public static final byte COMMAND_STEER		= 1 << 3;
+	public static final byte COMMAND_SETSPEED	= 1 << 0; // Followed by speed: positive = forward, negative = backward
+	public static final byte COMMAND_TRAVEL		= 1 << 1;
+	public static final byte COMMAND_STEER		= 1 << 2; // Followed by turnRate: positive = right, negative = left
+	public static final byte COMMAND_STOP		= 1 << 3;
 	
-	public static final byte MOVING_FORWARD		= COMMAND_FORWARD;
-	public static final byte MOVING_BACKWARD	= COMMAND_BACKWARD;
-	public static final byte MOVING_STOPPED		= COMMAND_STOP;
+	public static enum MoveType { TRAVEL, STEER, STOP };
+	public static enum TravelDirection { FORWARD, BACKWARD, NONE };
 	
-	private boolean _connected 				= false;
-	private BTConnection _connection 		= null;
-	private RemoteDevice _remoteDevice 		= null;
-	private DataInputStream _dataInStream 	= null;
-	private DifferentialPilot _pilot 		= null;
+	private boolean _connected 					= false;
+	private BTConnection _connection 			= null;
+	private RemoteDevice _remoteDevice 			= null;
+	private DataInputStream _dataInStream 		= null;
+	private DifferentialPilot _pilot 			= null;
 	
-	private byte _moving = MOVING_STOPPED;
+	private MoveType _moveType 					= MoveType.STOP;
+	private float _steerTurnRate 				= 0.0f;
+	private TravelDirection _travelDirection 	= TravelDirection.NONE;
 	
 	public RCCarEngine(DifferentialPilot pilot) {
 		_pilot = pilot;
@@ -129,13 +130,12 @@ public class RCCarEngine {
 	
 	public boolean handleCommand(byte command) {
 		switch (command) {
-			case COMMAND_FORWARD:
-			case COMMAND_BACKWARD: {
+			case COMMAND_SETSPEED: {
 				this.log("Waiting for speed...");
 				
-				int speed = -1;
+				float speed = -1;
 				try {
-					speed = _dataInStream.readInt();
+					speed = _dataInStream.readFloat();
 				} catch (IOException e) {
 					this.log("Failed to read speed: " + e);
 					return false;
@@ -143,26 +143,33 @@ public class RCCarEngine {
 				
 				this.log("Received speed " + speed);
 				
-				if (speed > -1) {
-					_pilot.setTravelSpeed(speed);
-				}
+				boolean success = this.doSetSpeed(speed);
 				
-				if (_moving != command) {
-					if (command == COMMAND_FORWARD) {
-						_pilot.forward();
-					}
-					else {
-						_pilot.backward();
-					}
+				if (!success) {
+					this.log("Failed to set speed.");
+					return false;
 				}
-				_moving = command;
+
+				break;
+			}
+			case COMMAND_TRAVEL: {
+				boolean success = this.doTravel();
+				
+				if (!success) {
+					this.log("Failed to travel.");
+					return false;
+				}
 				
 				break;
 			}
 			
 			case COMMAND_STOP: {
-				_pilot.stop();
-				_moving = command;
+				boolean success = this.doStop();
+				
+				if (!success) {
+					this.log("Failed to stop.");
+					return false;
+				}
 				
 				break;
 			}
@@ -180,24 +187,12 @@ public class RCCarEngine {
 				
 				this.log("Received turnRate " + turnRate);
 				
-				// direction: -1 = left, 1 = right
-				int direction = (int) Math.signum(turnRate);
+				boolean success = this.doSteer(turnRate);
 				
-				// Absolute turnRate should be kept between 0.0 and 100.0
-				turnRate = Math.abs(turnRate);
-				turnRate = (float) Math.max(0.0f, (float) Math.min(100.0f, turnRate));
-				
-				// Our turnRate: positive => right
-				// leJOS turnRate: negative => right
-				turnRate = -1 * direction * turnRate;
-				
-				// turnRate: ratio of inside to outside motor: ratio = 1 - turnRate / 100
-				// positive turnRate => left  motor drives the inside wheel => car turns left, forward  or right, backward
-				// negative turnRate => right                                            right, forward or left, backward
-				// turnRate == 0   => ratio = 1 - 0/100   = 1.0  => car travels in straight line
-				// turnRate == 100 => ratio = 1 - 100/100 = 0.0  => inside motor stops
-				// turnRate == 200 => ratio = 1 - 200/100 = -1.0 => car turns in place
-				_pilot.steer(turnRate);
+				if (!success) {
+					this.log("Failed to steer.");
+					return false;
+				}
 				
 				break;
 			}
@@ -209,6 +204,81 @@ public class RCCarEngine {
 		}
 		
 		this.log("Handled command " + command);
+		return true;
+	}
+	
+	private boolean doSetSpeed(float speed) {
+		if (speed < 0) {
+			_travelDirection = TravelDirection.BACKWARD;
+		}
+		else {
+			_travelDirection = TravelDirection.FORWARD;
+		}
+		speed = Math.abs(speed);
+		
+		_pilot.setTravelSpeed(speed);
+		
+		if (_moveType == MoveType.STEER) {
+			this.doSteer(_steerTurnRate);
+		}
+		else if (_moveType == MoveType.TRAVEL) {
+			this.doTravel();
+		}
+		
+		return true;
+	}
+	
+	private boolean doTravel() {
+		_moveType = MoveType.TRAVEL;
+
+		if (_travelDirection == TravelDirection.FORWARD) {
+			_pilot.forward();
+		}
+		else {
+			_pilot.backward();
+		}
+		
+		return true;
+	}
+	
+	private boolean doSteer(float turnRate) {
+		_moveType = MoveType.STEER;
+		
+		_steerTurnRate = turnRate;
+		
+		// direction: -1 = left, 1 = right
+		int direction = (int) Math.signum(turnRate);
+		
+		// Absolute turnRate should be kept between 0.0 and 100.0
+		turnRate = Math.abs(turnRate);
+		turnRate = (float) Math.max(0.0f, (float) Math.min(100.0f, turnRate));
+		
+		// Our turnRate: positive => right
+		// leJOS turnRate: negative => right
+		turnRate = -1 * direction * turnRate;
+		
+		// turnRate: ratio of inside to outside motor: ratio = 1 - turnRate / 100
+		// positive turnRate => left  motor drives the inside wheel => car turns left, forward  or right, backward
+		// negative turnRate => right                                            right, forward or left, backward
+		// turnRate == 0   => ratio = 1 - 0/100   = 1.0  => car travels in straight line
+		// turnRate == 100 => ratio = 1 - 100/100 = 0.0  => inside motor stops
+		// turnRate == 200 => ratio = 1 - 200/100 = -1.0 => car turns in place
+
+		if (_travelDirection == TravelDirection.FORWARD) {
+			_pilot.steer(turnRate);
+		}
+		else {
+			_pilot.steerBackward(turnRate);
+		}
+		
+		return true;
+	}
+	
+	private boolean doStop() {
+		_moveType = MoveType.STOP;
+		
+		_pilot.stop();
+		
 		return true;
 	}
 }
