@@ -5,7 +5,7 @@ import lejos.nxt.comm.*;
 import lejos.robotics.navigation.*;
 
 public class RCCar {
-	private static DifferentialPilot pilot = new DifferentialPilot(2.1f, 4.4f, Motor.A, Motor.B, false);
+	private static DifferentialPilot pilot = new DifferentialPilot(2.9, 13.7, Motor.A, Motor.B, false);
 	private static RCCarEngine carEngine = new RCCarEngine(pilot);
 	  
 	public static void main(String[] args) throws IOException {
