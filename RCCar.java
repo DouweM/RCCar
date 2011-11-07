@@ -13,6 +13,7 @@ public class RCCar {
 		
 		BTConnection connection = carEngine.waitForConnection();
 		if (connection == null) {
+			System.out.println("Failed to get connection");
 			return;
 		}
 

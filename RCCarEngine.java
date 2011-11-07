@@ -49,6 +49,10 @@ public class RCCarEngine {
 		 
 		BTConnection connection = Bluetooth.waitForConnection();
 		
+		if (connection == null) {
+			return null;
+		}
+		
 		if (!this.useConnection(connection)) {
 			return null;
 		}
