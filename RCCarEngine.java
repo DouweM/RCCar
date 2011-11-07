@@ -93,15 +93,25 @@ public class RCCarEngine {
 
 		try {
 			_dataInStream.close();
-			_remoteDevice = null;
 			_connection.close();
-			_connection = null;
+			
+			this.reset();
 		} catch (IOException e) {
 			this.log("Failed to close connection: " + e);
 			return;
 		}
 		
 		_connected = false;
+	}
+	
+	private void reset() {
+		_dataInStream = null;
+		_connection = null;
+		_remoteDevice = null;
+		
+		_moveType = MoveType.STOP;
+		_travelDirection = TravelDirection.NONE;
+		_steerTurnRate = 0.0f;
 	}
 	
 	public boolean waitForAndHandleCommand() {
