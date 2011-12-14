@@ -31,9 +31,13 @@ public class RCCarEngine {
 	
 	public void close() {
 		try {
+			_pilot.stop();
+			
 			_dataInStream.close();
 			
-			_pilot.stop();
+			try {
+				Thread.sleep(100); // Wait for data to drain
+			} catch (InterruptedException e) {}
 			
 			_moveType = MoveType.STOP;
 			_travelDirection = TravelDirection.NONE;
@@ -221,6 +225,7 @@ public class RCCarEngine {
 		_moveType = MoveType.STOP;
 		
 		_pilot.stop();
+		_pilot.setTravelSpeed(0.0);
 		
 		return true;
 	}
