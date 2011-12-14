@@ -38,27 +38,30 @@ public class RCCarEngine {
 			_moveType = MoveType.STOP;
 			_travelDirection = TravelDirection.NONE;
 			_steerTurnRate = 0.0f;
-		} catch (IOException e) {
+		} 
+		catch (IOException e) {
 			this.log("Failed to close: " + e);
 			return;
 		}
 	}
 	
 	public boolean waitForAndHandleCommand() {
-		this.log("Waiting for command...");
+//		this.log("Waiting...");
 		
-		byte command = 0;
+		byte command;
 		try {
 			command = _dataInStream.readByte();
-		} catch (EOFException e) {
+		} 
+		catch (EOFException e) {
 			this.log("EOF reached.");
 			return false;
-		} catch (IOException e) {
+		} 
+		catch (IOException e) {
 			this.log("Failed to read command: " + e);
 			return false;
 		}
 		
-		this.log("Received command " + command);
+//		this.log("Received " + command);
 		
 		return handleCommand(command);
 	}
@@ -66,17 +69,18 @@ public class RCCarEngine {
 	public boolean handleCommand(byte command) {
 		switch (command) {
 			case COMMAND_SETSPEED: {
-				this.log("Waiting for speed...");
+//				this.log("Waiting for speed...");
 				
-				float speed = -1;
+				float speed;
 				try {
 					speed = _dataInStream.readFloat();
-				} catch (IOException e) {
+				} 
+				catch (IOException e) {
 					this.log("Failed to read speed: " + e);
 					return false;
 				}
 				
-				this.log("Received speed " + speed);
+//				this.log("Received speed " + speed);
 				
 				boolean success = this.doSetSpeed(speed);
 				
@@ -110,17 +114,18 @@ public class RCCarEngine {
 			}
 			
 			case COMMAND_STEER: {
-				this.log("Waiting for turnRate...");
+//				this.log("Waiting for turnRate...");
 				
-				float turnRate = 0;
+				float turnRate;
 				try {
 					turnRate = _dataInStream.readFloat();
-				} catch (IOException e) {
+				} 
+				catch (IOException e) {
 					this.log("Failed to read turnRate: " + e);
 					return false;
 				}
 				
-				this.log("Received turnRate " + turnRate);
+//				this.log("Received turnRate " + turnRate);
 				
 				boolean success = this.doSteer(turnRate);
 				
@@ -133,16 +138,16 @@ public class RCCarEngine {
 			}
 			
 			default: {
-				this.log("Command not recognized: " + command);
-				return false;
+				this.log("Command? " + command);
+				return true;
 			}
 		}
 		
-		this.log("Handled command " + command);
 		return true;
 	}
 	
 	private boolean doSetSpeed(float speed) {
+		System.out.println("SETSPEED: " + speed);
 		if (speed < 0) {
 			_travelDirection = TravelDirection.BACKWARD;
 		}
@@ -164,6 +169,7 @@ public class RCCarEngine {
 	}
 	
 	private boolean doTravel() {
+		System.out.println("TRAVEL");
 		_moveType = MoveType.TRAVEL;
 
 		if (_travelDirection == TravelDirection.FORWARD) {
@@ -177,6 +183,7 @@ public class RCCarEngine {
 	}
 	
 	private boolean doSteer(float turnRate) {
+		System.out.println("STEER: " + turnRate);
 		_moveType = MoveType.STEER;
 		
 		_steerTurnRate = turnRate;
@@ -210,6 +217,7 @@ public class RCCarEngine {
 	}
 	
 	private boolean doStop() {
+		System.out.println("STOP");
 		_moveType = MoveType.STOP;
 		
 		_pilot.stop();
