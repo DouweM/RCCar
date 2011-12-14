@@ -4,21 +4,20 @@ import lejos.robotics.navigation.*;
 import lejos.nxt.comm.*;
 
 public class RCCarEngine {
-	public static final byte COMMAND_SETSPEED	= 1 << 0; // Followed by speed: positive = forward, negative = backward
-	public static final byte COMMAND_TRAVEL		= 1 << 1;
-	public static final byte COMMAND_STEER		= 1 << 2; // Followed by turnRate: positive = right, negative = left
-	public static final byte COMMAND_STOP		= 1 << 3;
+	public static final byte COMMAND_TRAVEL		= 1 << 0; // Followed by speed: 	positive = forward, negative = backward
+	public static final byte COMMAND_STEER		= 1 << 1; // Followed by turnRate:	positive = right, 	negative = left
+	public static final byte COMMAND_STOP		= 1 << 2;
 	
-	public static enum MoveType { TRAVEL, STEER, STOP };
-	public static enum TravelDirection { FORWARD, BACKWARD, NONE };
+	public static enum TravelDirection { FORWARD, BACKWARD };
 	
 	private final DifferentialPilot _pilot;
 	private final DataInputStream _dataInStream;
 
 	
-	private MoveType _moveType 					= MoveType.STOP;
+	private boolean _moving						= false;
+	private TravelDirection _travelDirection 	= TravelDirection.FORWARD;
+	private float _travelSpeed	 				= 0.0f;
 	private float _steerTurnRate 				= 0.0f;
-	private TravelDirection _travelDirection 	= TravelDirection.NONE;
 	
 	public RCCarEngine(DifferentialPilot pilot, NXTConnection connection) {
 		_pilot = pilot;
@@ -31,6 +30,11 @@ public class RCCarEngine {
 	
 	public void close() {
 		try {
+			_moving = false;
+			_travelDirection = TravelDirection.FORWARD;
+			_travelSpeed = 0.0f;
+			_steerTurnRate = 0.0f;
+			
 			_pilot.stop();
 			
 			_dataInStream.close();
@@ -38,10 +42,6 @@ public class RCCarEngine {
 			try {
 				Thread.sleep(100); // Wait for data to drain
 			} catch (InterruptedException e) {}
-			
-			_moveType = MoveType.STOP;
-			_travelDirection = TravelDirection.NONE;
-			_steerTurnRate = 0.0f;
 		} 
 		catch (IOException e) {
 			this.log("Failed to close: " + e);
@@ -72,9 +72,7 @@ public class RCCarEngine {
 	
 	public boolean handleCommand(byte command) {
 		switch (command) {
-			case COMMAND_SETSPEED: {
-//				this.log("Waiting for speed...");
-				
+			case COMMAND_TRAVEL: {				
 				float speed;
 				try {
 					speed = _dataInStream.readFloat();
@@ -83,43 +81,13 @@ public class RCCarEngine {
 					this.log("Failed to read speed: " + e);
 					return false;
 				}
-				
-//				this.log("Received speed " + speed);
-				
-				boolean success = this.doSetSpeed(speed);
-				
-				if (!success) {
-					this.log("Failed to set speed.");
-					return false;
-				}
-
-				break;
-			}
-			case COMMAND_TRAVEL: {
-				boolean success = this.doTravel();
-				
-				if (!success) {
-					this.log("Failed to travel.");
-					return false;
-				}
+								
+				this.doTravel(speed);
 				
 				break;
 			}
 			
-			case COMMAND_STOP: {
-				boolean success = this.doStop();
-				
-				if (!success) {
-					this.log("Failed to stop.");
-					return false;
-				}
-				
-				break;
-			}
-			
-			case COMMAND_STEER: {
-//				this.log("Waiting for turnRate...");
-				
+			case COMMAND_STEER: {				
 				float turnRate;
 				try {
 					turnRate = _dataInStream.readFloat();
@@ -128,69 +96,29 @@ public class RCCarEngine {
 					this.log("Failed to read turnRate: " + e);
 					return false;
 				}
+								
+				this.doSteer(turnRate);
 				
-//				this.log("Received turnRate " + turnRate);
-				
-				boolean success = this.doSteer(turnRate);
-				
-				if (!success) {
-					this.log("Failed to steer.");
-					return false;
-				}
+				break;
+			}
+			
+			case COMMAND_STOP: {
+				this.doStop();
 				
 				break;
 			}
 			
 			default: {
-				this.log("Command? " + command);
-				return true;
+				this.log("Unrecognized command: " + command);
+				return false;
 			}
 		}
 		
 		return true;
 	}
 	
-	private boolean doSetSpeed(float speed) {
-		System.out.println("SETSPEED: " + speed);
-		if (speed < 0) {
-			_travelDirection = TravelDirection.BACKWARD;
-		}
-		else {
-			_travelDirection = TravelDirection.FORWARD;
-		}
-		speed = Math.abs(speed);
-		
-		_pilot.setTravelSpeed(speed);
-		
-		if (_moveType == MoveType.STEER) {
-			this.doSteer(_steerTurnRate);
-		}
-		else if (_moveType == MoveType.TRAVEL) {
-			this.doTravel();
-		}
-		
-		return true;
-	}
-	
-	private boolean doTravel() {
-		System.out.println("TRAVEL");
-		_moveType = MoveType.TRAVEL;
-
-		if (_travelDirection == TravelDirection.FORWARD) {
-			_pilot.forward();
-		}
-		else {
-			_pilot.backward();
-		}
-		
-		return true;
-	}
-	
-	private boolean doSteer(float turnRate) {
-		System.out.println("STEER: " + turnRate);
-		_moveType = MoveType.STEER;
-		
-		_steerTurnRate = turnRate;
+	private float getLejosSteerTurnRate() {
+		float turnRate = _steerTurnRate;
 		
 		// direction: -1 = left, 1 = right
 		int direction = (int) Math.signum(turnRate);
@@ -209,24 +137,63 @@ public class RCCarEngine {
 		// turnRate == 0   => ratio = 1 - 0/100   = 1.0  => car travels in straight line
 		// turnRate == 100 => ratio = 1 - 100/100 = 0.0  => inside motor stops
 		// turnRate == 200 => ratio = 1 - 200/100 = -1.0 => car turns in place
-
+		
+		return turnRate;
+	}
+	
+	private void go() {
+		if (!_moving) {
+			return;
+		}
+		
+		// If turnRate == 0.0f, we're just traveling in a straight line.
+		float turnRate = this.getLejosSteerTurnRate();
+		
 		if (_travelDirection == TravelDirection.FORWARD) {
 			_pilot.steer(turnRate);
 		}
 		else {
 			_pilot.steerBackward(turnRate);
 		}
-		
-		return true;
 	}
 	
-	private boolean doStop() {
+	private void doTravel(float speed) {
+		System.out.println("TRAVEL: " + speed);
+
+		_moving = true;
+		_travelSpeed = speed;
+		
+		if (speed < 0) {
+			_travelDirection = TravelDirection.BACKWARD;
+		}
+		else {
+			_travelDirection = TravelDirection.FORWARD;
+		}
+		speed = Math.abs(speed);
+		
+		_pilot.setTravelSpeed(speed);
+		
+		this.go();
+	}
+	
+	private void doSteer(float turnRate) {
+		System.out.println("STEER: " + turnRate);
+		
+		_steerTurnRate = turnRate;
+		
+		this.go();
+	}
+	
+	private void doStop() {
 		System.out.println("STOP");
-		_moveType = MoveType.STOP;
+		
+		_moving = false;
+		_travelDirection = TravelDirection.FORWARD;
+		_travelSpeed = 0.0f;
+		_steerTurnRate = 0.0f;
 		
 		_pilot.stop();
 		_pilot.setTravelSpeed(0.0);
-		
-		return true;
+		_pilot.steer(0);
 	}
 }
