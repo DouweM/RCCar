@@ -6,7 +6,6 @@ import lejos.nxt.comm.*;
 public class RCCarEngine {
     public static final byte COMMAND_TRAVEL    = 1 << 0; // Followed by speed:     positive = forward, negative = backward
     public static final byte COMMAND_STEER     = 1 << 1; // Followed by turnRate:  positive = right,   negative = left
-    public static final byte COMMAND_STOP      = 1 << 2;
     
     public static enum TravelDirection { FORWARD, BACKWARD };
     
@@ -102,12 +101,6 @@ public class RCCarEngine {
                 break;
             }
             
-            case COMMAND_STOP: {
-                this.doStop();
-                
-                break;
-            }
-            
             default: {
                 this.log("Unrecognized command: " + command);
                 return false;
@@ -160,20 +153,30 @@ public class RCCarEngine {
     private void doTravel(float speed) {
         System.out.println("TRAVEL: " + speed);
 
-        _moving = true;
-        _travelSpeed = speed;
-        
-        if (speed < 0) {
-            _travelDirection = TravelDirection.BACKWARD;
+        if (speed != 0) {
+            _moving = true;
+            _travelSpeed = speed;
+            
+            if (speed < 0) {
+                _travelDirection = TravelDirection.BACKWARD;
+            }
+            else {
+                _travelDirection = TravelDirection.FORWARD;
+            }
+            speed = Math.abs(speed);
+            
+            _pilot.setTravelSpeed(speed);
+            
+            this.go();
         }
         else {
+            _moving = false;
             _travelDirection = TravelDirection.FORWARD;
+            _travelSpeed = 0.0f;
+            
+            _pilot.stop();
+            _pilot.setTravelSpeed(0.0);
         }
-        speed = Math.abs(speed);
-        
-        _pilot.setTravelSpeed(speed);
-        
-        this.go();
     }
     
     private void doSteer(float turnRate) {
@@ -182,18 +185,5 @@ public class RCCarEngine {
         _steerTurnRate = turnRate;
         
         this.go();
-    }
-    
-    private void doStop() {
-        System.out.println("STOP");
-        
-        _moving = false;
-        _travelDirection = TravelDirection.FORWARD;
-        _travelSpeed = 0.0f;
-        _steerTurnRate = 0.0f;
-        
-        _pilot.stop();
-        _pilot.setTravelSpeed(0.0);
-        _pilot.steer(0);
     }
 }
