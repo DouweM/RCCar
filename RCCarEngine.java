@@ -152,12 +152,16 @@ public class RCCarEngine {
     
     private void doTravel(float speed) {
         System.out.println("TRAVEL: " + speed);
+        
+        if (speed > -2.0f && speed < 2.0f) {
+            speed = 0.0f;
+        }
 
-        if (speed != 0) {
+        if (speed != 0.0f) {
             _moving = true;
             _travelSpeed = speed;
             
-            if (speed < 0) {
+            if (speed < 0.0f) {
                 _travelDirection = TravelDirection.BACKWARD;
             }
             else {
@@ -181,6 +185,10 @@ public class RCCarEngine {
     
     private void doSteer(float turnRate) {
         System.out.println("STEER: " + turnRate);
+        
+        if (turnRate > -5.0f && turnRate < 5.0f) {
+            turnRate = 0.0f;
+        }
         
         _steerTurnRate = turnRate;
         
