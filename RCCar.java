@@ -17,7 +17,7 @@ public class RCCar {
 
             System.out.println("Connected");
 
-            DifferentialPilot pilot = new DifferentialPilot(2.9, 13.7, Motor.A, Motor.B, false);
+            DifferentialPilot pilot = new DifferentialPilot(2.9, 17.4, Motor.A, Motor.B, false);
             RCCarEngine carEngine = new RCCarEngine(pilot, connection);
 
             System.out.println("Reading commands");
